@@ -1,0 +1,868 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Partzona Partner API",
+        "description": "1688.com məhsul məlumatlarına çıxış üçün Partner API",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "Partner API v1"
+        }
+    ],
+    "paths": {
+        "/categories/{categoryId}/products": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Kateqoriya üzrə məhsullar",
+                "description": "Verilmiş kateqoriyadakı məhsulları səhifələr şəklində qaytarır. Yalnız icazəli kateqoriyalar üçün işləyir.",
+                "operationId": "getCategoryProducts",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "categoryId",
+                        "in": "path",
+                        "description": "1688 kateqoriya ID-si",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 71
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Səhifə nömrəsi (1-dən başlayır)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Səhifədəki məhsul sayı (max 50)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "language",
+                        "in": "query",
+                        "description": "Tərcümə dili",
+                        "schema": {
+                            "type": "string",
+                            "default": "en",
+                            "enum": [
+                                "en",
+                                "ru",
+                                "ja",
+                                "ko"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort_field",
+                        "in": "query",
+                        "description": "Sıralama sahəsi",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_type",
+                        "in": "query",
+                        "description": "Sıralama istiqaməti",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Məhsul siyahısı",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "result": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "403": {
+                        "description": "Kateqoriya və ya endpoint icazəsi yoxdur"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/categories/{categoryId}/products/total": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Kateqoriya üzrə məhsul sayı",
+                "description": "Verilmiş kateqoriyadakı ümumi məhsul sayını qaytarır.",
+                "operationId": "getCategoryProductTotal",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "categoryId",
+                        "in": "path",
+                        "description": "1688 kateqoriya ID-si",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 71
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Məhsul sayı"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "403": {
+                        "description": "Kateqoriya icazəsi yoxdur"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/products/{offerId}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Məhsul detalları",
+                "description": "Konkret məhsulun tam məlumatlarını qaytarır: qiymət, şəkillər, variantlar.",
+                "operationId": "getProductDetail",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "offerId",
+                        "in": "path",
+                        "description": "1688 məhsul ID-si",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "spec_id",
+                        "in": "query",
+                        "description": "Variant (SKU) ID-si",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "country",
+                        "in": "query",
+                        "description": "Ölkə kodu",
+                        "schema": {
+                            "type": "string",
+                            "default": "AZ"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Məhsul detalları"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/categories": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "İcazəli kateqoriyalar",
+                "description": "Partnerin icazəli kateqoriyalarının siyahısını qaytarır.",
+                "operationId": "getCategories",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kateqoriya siyahısı",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "category_id": {
+                                                "type": "integer"
+                                            },
+                                            "translated_name": {
+                                                "type": "string"
+                                            },
+                                            "chinese_name": {
+                                                "type": "string"
+                                            },
+                                            "parent_category_id": {
+                                                "type": "integer"
+                                            },
+                                            "leaf": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/account/info": {
+            "get": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Hesab məlumatları",
+                "description": "Partnerin hesab məlumatlarını, limitlərini və icazələrini qaytarır.",
+                "operationId": "getAccountInfo",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Hesab məlumatları"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/orders": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Sifariş siyahısı",
+                "description": "Partnerin öz sifarişlərini DB-dən qaytarır. Statuslar hər 5 dəqiqə 1688 ilə sinxronlaşır.",
+                "operationId": "getOrders",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Sifariş statusu: waitbuyerpay, waitsellersend, waitbuyerreceive, confirm_goods, success, cancel, terminated",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "waitbuyerpay",
+                                "waitsellersend",
+                                "waitbuyerreceive",
+                                "confirm_goods",
+                                "success",
+                                "cancel",
+                                "terminated"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Order ID və ya PZ ID ilə axtarış",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sifariş siyahısı (paginated)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "current_page": {
+                                            "type": "integer"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "order_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "out_order_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "total_amount": {
+                                                        "type": "string"
+                                                    },
+                                                    "post_fee": {
+                                                        "type": "string"
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        },
+                                                        "nullable": true
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "last_page": {
+                                            "type": "integer"
+                                        },
+                                        "per_page": {
+                                            "type": "integer"
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Sifariş yarat",
+                "description": "1688-dən sifariş yaradır. Balans yoxlanılır, uğurlu olsa məbləğ balansdan düşür.",
+                "operationId": "createOrder",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "flow",
+                                    "address",
+                                    "items"
+                                ],
+                                "properties": {
+                                    "flow": {
+                                        "description": "bigcfenxiao=B2C, bigcpifa=B2B",
+                                        "type": "string",
+                                        "enum": [
+                                            "bigcfenxiao",
+                                            "bigcpifa"
+                                        ],
+                                        "example": "bigcpifa"
+                                    },
+                                    "address": {
+                                        "required": [
+                                            "fullName",
+                                            "mobile",
+                                            "provinceText",
+                                            "cityText",
+                                            "address"
+                                        ],
+                                        "properties": {
+                                            "fullName": {
+                                                "type": "string",
+                                                "example": "Test User"
+                                            },
+                                            "mobile": {
+                                                "type": "string",
+                                                "example": "13800138000"
+                                            },
+                                            "phone": {
+                                                "type": "string",
+                                                "example": "13800138000"
+                                            },
+                                            "postCode": {
+                                                "type": "string",
+                                                "example": "string"
+                                            },
+                                            "provinceText": {
+                                                "type": "string",
+                                                "example": "浙江省"
+                                            },
+                                            "cityText": {
+                                                "type": "string",
+                                                "example": "杭州市"
+                                            },
+                                            "areaText": {
+                                                "type": "string",
+                                                "example": "滨江区"
+                                            },
+                                            "address": {
+                                                "type": "string",
+                                                "example": "网商路699号"
+                                            },
+                                            "districtText": {
+                                                "type": "string",
+                                                "example": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "offerId",
+                                                "quantity"
+                                            ],
+                                            "properties": {
+                                                "offerId": {
+                                                    "type": "integer",
+                                                    "example": 1000000749350
+                                                },
+                                                "quantity": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "specId": {
+                                                    "type": "string",
+                                                    "example": "2ea1ac0451fb8db8492ca6205199b47a"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "message": {
+                                        "description": "Satıcıya mesaj",
+                                        "type": "string",
+                                        "example": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sifariş yaradıldı və ödəniş hazırlandı",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "order_id": {
+                                            "type": "string"
+                                        },
+                                        "out_order_id": {
+                                            "type": "string"
+                                        },
+                                        "total_amount": {
+                                            "description": "Məhsul cəmi (CNY)",
+                                            "type": "number"
+                                        },
+                                        "post_fee": {
+                                            "description": "Shipping (CNY)",
+                                            "type": "number"
+                                        },
+                                        "amount_usd": {
+                                            "description": "Balansdan düşülən məbləğ (USD)",
+                                            "type": "number"
+                                        },
+                                        "exchange_rate": {
+                                            "description": "İstifadə olunan CNY→USD məzənnəsi",
+                                            "type": "number"
+                                        },
+                                        "payment": {
+                                            "description": "Protocol Pay hazırlıq cavabı",
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "1688 API xətası"
+                    },
+                    "403": {
+                        "description": "Balans kifayət etmir"
+                    },
+                    "422": {
+                        "description": "Validasiya xətası"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/orders/{orderId}": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Sifariş detalları",
+                "description": "Konkret sifarişin tam məlumatlarını qaytarır: status, məhsullar, qiymətlər, tracking.",
+                "operationId": "getOrderDetail",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sifariş detalları"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Sifarişi ləğv et",
+                "description": "Ödənilməmiş sifarişi ləğv edir.",
+                "operationId": "cancelOrder",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "reason",
+                        "in": "query",
+                        "description": "Ləğv səbəbi",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sifariş ləğv edildi"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/orders/{orderId}/confirm": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Malı qəbul et",
+                "description": "Sifarişi 'alındı' olaraq işarələyir. Geri qaytarıla bilməz!",
+                "operationId": "confirmReceipt",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mal qəbul edildi"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/orders/{orderId}/refund": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Refund yarat",
+                "description": "Ödənilmiş sifariş üçün geri qaytarma müraciəti yaradır.",
+                "operationId": "createRefund",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/lang"
+                    },
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "entry_ids"
+                                ],
+                                "properties": {
+                                    "entry_ids": {
+                                        "description": "Geri qaytarılacaq entry ID-lər",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": {
+                                        "description": "refund=yalnız pul, returnRefund=mal+pul",
+                                        "type": "string",
+                                        "enum": [
+                                            "refund",
+                                            "returnRefund"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "amount": {
+                                        "type": "number",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Refund müraciəti yaradıldı"
+                    },
+                    "401": {
+                        "description": "Token etibarsızdır"
+                    },
+                    "422": {
+                        "description": "Validasiya xətası"
+                    },
+                    "429": {
+                        "description": "Rate limit aşılıb"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "parameters": {
+            "lang": {
+                "name": "lang",
+                "in": "query",
+                "description": "Cavab dilini təyin edir (az, ru, en). Həmçinin Accept-Language header ilə göndərilə bilər.",
+                "schema": {
+                    "type": "string",
+                    "default": "en",
+                    "enum": [
+                        "az",
+                        "ru",
+                        "en"
+                    ]
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Partner API token. Authorization: Bearer pz_live_xxxxx",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Products",
+            "description": "Products"
+        },
+        {
+            "name": "Categories",
+            "description": "Categories"
+        },
+        {
+            "name": "Account",
+            "description": "Account"
+        },
+        {
+            "name": "Orders",
+            "description": "Orders"
+        }
+    ]
+}
