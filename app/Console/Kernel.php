@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
 //        $schedule->command('currency:update')->dailyAt('09:00');
+//        $schedule->command('categories:sync-product-counts')->dailyAt('03:00');
     }
 
     /**

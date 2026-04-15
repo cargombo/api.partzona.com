@@ -35,6 +35,8 @@ return [
         'app_secret' => env('ALI1688_APP_SECRET'),
         'access_token' => env('ALI1688_ACCESS_TOKEN'),
         'offer_pool_id' => env('ALI1688_OFFER_POOL_ID'),
+        'buyer_id' => env('ALI1688_BUYER_ID'),
+        'account_type' => env('ALI1688_ACCOUNT_TYPE', 'buyer'),
     ],
 
 ];

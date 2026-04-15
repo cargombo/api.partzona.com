@@ -27,11 +27,15 @@ return [
     // Orders
     'insufficient_balance' => 'Недостаточный баланс. Пополните депозит или свяжитесь с администратором.',
     'order_charge' => 'Оплата заказа :id',
+    'order_refund' => 'Возврат по заказу :id',
+    'product_count_sync_queued' => 'Синхронизация количества товаров запущена в фоне.',
     'order_failed' => 'Не удалось создать заказ',
     'order_error' => 'Ошибка заказа: :error',
     'payment_failed' => 'Оплата не прошла. Заказ автоматически отменён.',
     'payment_error_NO_SIGN_UP_ERROR' => 'Аккаунт Alipay не привязан к 1688. Свяжитесь с администратором.',
     'payment_error_BALANCE_NOT_ENOUGH' => 'Недостаточно средств на Alipay аккаунте 1688.',
+    'order_not_found' => 'Заказ не найден или список товаров пуст.',
+    'refund_default_reason' => 'Запрос на возврат',
 
     // Plan
     'plan_archived' => 'План архивирован',

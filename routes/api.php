@@ -50,6 +50,7 @@ Route::middleware(['auth:sanctum', 'is.admin'])->group(function () {
     Route::put('/partners/{id}/permissions', [PartnerController::class, 'updatePermissions']);
     Route::post('/partners/{id}/reset-limits', [PartnerController::class, 'resetLimits']);
     Route::get('/partners/{id}/orders', [PartnerController::class, 'partnerOrders']);
+    Route::get('/partners/{id}/refunds', [PartnerController::class, 'partnerRefunds']);
 
     // Plans CRUD
     Route::get('/plans', [PlanController::class, 'index']);
@@ -79,6 +80,7 @@ Route::middleware(['auth:sanctum', 'is.admin'])->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/stats', [CategoryController::class, 'stats']);
     Route::post('/categories/sync', [CategoryController::class, 'sync']);
+    Route::post('/categories/sync-product-counts', [CategoryController::class, 'syncProductCounts']);
     Route::get('/categories/{id}', [CategoryController::class, 'show']);
     Route::put('/categories/{id}/status', [CategoryController::class, 'updateStatus']);
 

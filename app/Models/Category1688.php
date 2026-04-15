@@ -17,6 +17,8 @@ class Category1688 extends Model
         'level',
         'status',
         'partner_count',
+        'product_count',
+        'product_count_updated_at',
     ];
 
     protected $casts = [
@@ -24,6 +26,8 @@ class Category1688 extends Model
         'parent_category_id' => 'integer',
         'leaf' => 'boolean',
         'partner_count' => 'integer',
+        'product_count' => 'integer',
+        'product_count_updated_at' => 'datetime',
     ];
 
     /**

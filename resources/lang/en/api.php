@@ -27,11 +27,15 @@ return [
     // Orders
     'insufficient_balance' => 'Insufficient balance. Please top up or contact admin.',
     'order_charge' => 'Charge for order :id',
+    'order_refund' => 'Refund for order :id',
+    'product_count_sync_queued' => 'Product count sync queued. Running in background.',
     'order_failed' => 'Failed to create order',
     'order_error' => 'Order error: :error',
     'payment_failed' => 'Payment failed. Order has been automatically cancelled.',
     'payment_error_NO_SIGN_UP_ERROR' => 'Alipay account is not linked on 1688. Contact admin to resolve.',
     'payment_error_BALANCE_NOT_ENOUGH' => 'Insufficient Alipay balance on 1688 account.',
+    'order_not_found' => 'Order not found or product list is empty.',
+    'refund_default_reason' => 'Refund request',
 
     // Plan
     'plan_archived' => 'Plan archived',

@@ -407,8 +407,9 @@ class PartnerApiController extends Controller
                     ], 403);
                 }
 
-                // Ödəniş hazırla (Protocol Pay)
-                $paymentResult = $this->ali1688->preparePayment((int) $orderId);
+                // Ödəniş hazırla (Protocol Pay) — totalSuccessAmount artıq fen-dədir
+                $payAmountFen = (int) $totalSuccessAmount;
+                $paymentResult = $this->ali1688->preparePayment((int) $orderId, $payAmountFen);
 
                 // Payment uğursuz → 1688-dən ləğv et, DB-yə yazmadan qaytar
                 if (empty($paymentResult['success'])) {
@@ -423,6 +424,7 @@ class PartnerApiController extends Controller
                         'status' => 400,
                         'message' => $message,
                         'error_code' => $code,
+                        'raw_1688' => $paymentResult,
                     ], 400);
                 }
 
@@ -685,7 +687,7 @@ class PartnerApiController extends Controller
      * @OA\Post(
      *     path="/orders/{orderId}/refund",
      *     summary="Refund yarat",
-     *     description="Ödənilmiş sifariş üçün geri qaytarma müraciəti yaradır.",
+     *     description="Ödənilmiş sifariş üçün geri qaytarma müraciəti yaradır. Məbləğ verilməyibsə order detalından avtomatik hesablanır.",
      *     operationId="createRefund",
      *     tags={"Orders"},
      *     security={{"bearerAuth":{}}},
@@ -695,10 +697,12 @@ class PartnerApiController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             required={"entry_ids"},
-     *             @OA\Property(property="entry_ids", type="array", @OA\Items(type="integer"), description="Geri qaytarılacaq entry ID-lər"),
-     *             @OA\Property(property="type", type="string", enum={"refund","returnRefund"}, description="refund=yalnız pul, returnRefund=mal+pul"),
-     *             @OA\Property(property="reason", type="string", nullable=true),
-     *             @OA\Property(property="amount", type="number", nullable=true)
+     *             @OA\Property(property="entry_ids", type="array", @OA\Items(type="integer"), description="Geri qaytarılacaq subItemID-lər"),
+     *             @OA\Property(property="reason_id", type="integer", nullable=true, description="Refund səbəb ID-si (default 20006)"),
+     *             @OA\Property(property="description", type="string", nullable=true),
+     *             @OA\Property(property="goods_status", type="string", enum={"refundWaitSellerSend","refundWaitBuyerReceive","refundBuyerReceived","aftersaleBuyerNotReceived","aftersaleBuyerReceived"}, nullable=true),
+     *             @OA\Property(property="apply_payment", type="integer", nullable=true, description="Məhsul məbləği fen-lə (CNY × 100). Verilməyibsə avtomatik hesablanır."),
+     *             @OA\Property(property="apply_carriage", type="integer", nullable=true, description="Çatdırılma məbləği fen-lə. Verilməyibsə avtomatik hesablanır.")
      *         )
      *     ),
      *     @OA\Response(response=200, description="Refund müraciəti yaradıldı"),
@@ -715,21 +719,89 @@ class PartnerApiController extends Controller
 
         $request->validate([
             'entry_ids' => 'required|array|min:1',
-            'type' => 'nullable|in:refund,returnRefund',
-            'reason' => 'nullable|string',
-            'amount' => 'nullable|numeric|min:0',
+            'entry_ids.*' => 'integer',
+            'reason_id' => 'nullable|integer',
+            'description' => 'nullable|string',
+            'goods_status' => 'nullable|string|in:refundWaitSellerSend,refundWaitBuyerReceive,refundBuyerReceived,aftersaleBuyerNotReceived,aftersaleBuyerReceived',
+            'apply_payment' => 'nullable|integer|min:0',
+            'apply_carriage' => 'nullable|integer|min:0',
         ]);
+
+        $entryIds      = array_map('intval', $request->input('entry_ids'));
+        $reasonId      = (int) $request->input('reason_id', 20006);
+        $description   = (string) $request->input('description', __('api.refund_default_reason'));
+        $goodsStatus   = (string) $request->input('goods_status', 'refundWaitSellerSend');
+        $applyPayment  = $request->input('apply_payment');
+        $applyCarriage = $request->input('apply_carriage');
+
+        // Məbləğlər verilməyibsə → order detalından hesabla (yalnız seçilmiş entry-lər üçün)
+        if ($applyPayment === null || $applyCarriage === null) {
+            $detail = $this->ali1688->getOrderDetail($orderId);
+            $items = $detail['result']['productItems'] ?? [];
+
+            if (empty($items)) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => __('api.order_not_found'),
+                    'raw' => $detail,
+                ], 400);
+            }
+
+            $itemTotal = 0;
+            $shippingTotal = 0;
+            foreach ($items as $it) {
+                if (!in_array((int) ($it['subItemID'] ?? 0), $entryIds, true)) {
+                    continue;
+                }
+                $itemTotal     += (int) round(((float) ($it['price'] ?? 0)) * (int) ($it['quantity'] ?? 1) * 100);
+                $shippingTotal += (int) round(((float) ($it['sharePostage'] ?? 0)) * 100);
+            }
+
+            if ($applyPayment === null)  $applyPayment  = $itemTotal;
+            if ($applyCarriage === null) $applyCarriage = $shippingTotal;
+        }
 
         $result = $this->ali1688->createRefund(
             $orderId,
-            $request->input('entry_ids'),
-            $request->input('type', 'refund'),
-            $request->input('reason'),
-            $request->input('amount')
+            $entryIds,
+            (int) $applyPayment,
+            (int) $applyCarriage,
+            $reasonId,
+            $description,
+            $goodsStatus
         );
 
-        if (isset($result['success'])) {
-            Order::where('order_id', (string) $orderId)->update(['status' => 'terminated']);
+        $refundId = $result['result']['result']['refundId'] ?? null;
+        if ($refundId) {
+            $partner = $request->user();
+            $totalFen = (int) $applyPayment + (int) $applyCarriage;
+            $totalCny = $totalFen / 100;
+            $cnyToUsd = Currency::getRate('CNY', 'USD') ?? 0.145;
+            $refundUsd = round($totalCny * $cnyToUsd, 2);
+
+            DB::transaction(function () use ($partner, $refundUsd, $orderId, $refundId, $description) {
+                Order::where('order_id', (string) $orderId)->update(['status' => 'terminated']);
+
+                if ($partner && $refundUsd > 0) {
+                    if ($partner->payment_model === 'deposit') {
+                        $partner->deposit_balance += $refundUsd;
+                    } else {
+                        $partner->debit_used = max(0, $partner->debit_used - $refundUsd);
+                    }
+                    $partner->outstanding_balance = max(0, $partner->outstanding_balance - $refundUsd);
+                    $partner->save();
+
+                    Transaction::create([
+                        'partner_id' => $partner->id,
+                        'amount' => $refundUsd,
+                        'type' => 'refund',
+                        'description' => __('api.order_refund', ['id' => $orderId]) . ($description ? " — {$description}" : ''),
+                        'reference_type' => 'order',
+                        'reference_id' => (string) $orderId,
+                        'balance_after' => $partner->availableBalance(),
+                    ]);
+                }
+            });
         }
 
         return response()->json($result);

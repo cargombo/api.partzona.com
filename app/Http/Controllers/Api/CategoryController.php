@@ -7,6 +7,7 @@ use App\Models\Category1688;
 use App\Services\Ali1688Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
 class CategoryController extends Controller
@@ -63,10 +64,39 @@ class CategoryController extends Controller
         $category = Category1688::findOrFail($id);
         $category->update(['status' => $request->status]);
 
+        $affectedChildren = $this->cascadeStatusToDescendants(
+            $category->category_id,
+            $request->status
+        );
+
         return response()->json([
             'message' => __('api.category_status_updated'),
             'category' => $category,
+            'affected_children' => $affectedChildren,
         ]);
+    }
+
+    /**
+     * Butun alt kateqoriyalara (rekursiv) status yay
+     */
+    private function cascadeStatusToDescendants(int $parentCategoryId, string $status): int
+    {
+        $childIds = Category1688::where('parent_category_id', $parentCategoryId)
+            ->pluck('category_id')
+            ->all();
+
+        if (empty($childIds)) {
+            return 0;
+        }
+
+        $updated = Category1688::whereIn('parent_category_id', [$parentCategoryId])
+            ->update(['status' => $status]);
+
+        foreach ($childIds as $childId) {
+            $updated += $this->cascadeStatusToDescendants($childId, $status);
+        }
+
+        return $updated;
     }
 
     /**
@@ -159,6 +189,26 @@ class CategoryController extends Controller
     }
 
     /**
+     * Məhsul saylarını background-da sinxronlaşdır
+     * POST /api/categories/sync-product-counts
+     */
+    public function syncProductCounts(Request $request): JsonResponse
+    {
+        $onlyActive = (bool) $request->input('only_active', false);
+
+        $params = [];
+        if ($onlyActive) {
+            $params['--only-active'] = true;
+        }
+
+        Artisan::queue('categories:sync-product-counts', $params);
+
+        return response()->json([
+            'message' => __('api.product_count_sync_queued'),
+        ]);
+    }
+
+    /**
      * Sinxronizasiya statistikasi
      * GET /api/categories/stats
      */
@@ -169,6 +219,8 @@ class CategoryController extends Controller
             'active' => Category1688::where('status', 'active')->count(),
             'inactive' => Category1688::where('status', 'inactive')->count(),
             'archived' => Category1688::where('status', 'archived')->count(),
+            'total_products' => (int) Category1688::where('parent_category_id', 0)->sum('product_count'),
+            'product_count_updated_at' => Category1688::max('product_count_updated_at'),
             'last_synced_at' => Category1688::max('updated_at'),
         ]);
     }

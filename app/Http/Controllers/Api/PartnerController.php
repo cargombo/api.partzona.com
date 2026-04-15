@@ -355,6 +355,41 @@ class PartnerController extends Controller
     }
 
     /**
+     * Partner refundları (terminated orderlər + refund transaksiyaları)
+     */
+    public function partnerRefunds(string $id)
+    {
+        $partner = Partner::findOrFail($id);
+
+        $orders = \App\Models\Order::where('partner_id', $partner->id)
+            ->where('status', 'terminated')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        $orderIds = $orders->pluck('order_id')->all();
+
+        $transactions = Transaction::where('partner_id', $partner->id)
+            ->where('type', 'refund')
+            ->whereIn('reference_id', $orderIds)
+            ->get()
+            ->keyBy('reference_id');
+
+        $refunds = $orders->map(function ($order) use ($transactions) {
+            $tx = $transactions->get($order->order_id);
+            return [
+                'id' => $tx?->id ?? "ORD-{$order->order_id}",
+                'order_id' => $order->order_id,
+                'out_order_id' => $order->out_order_id,
+                'amount' => $tx ? (float) $tx->amount : 0,
+                'reason' => $tx?->description,
+                'created_at' => ($tx?->created_at ?? $order->updated_at)?->toIso8601String(),
+            ];
+        })->values();
+
+        return response()->json($refunds);
+    }
+
+    /**
      * Partner öz sifarişləri (portal)
      */
     public function myOrders(Request $request)

@@ -10,6 +10,8 @@ class Ali1688Service
     private ?string $appKey;
     private ?string $appSecret;
     private ?string $accessToken;
+    private ?string $buyerId;
+    private string $accountType;
     private string $baseUrl = 'https://gw.open.1688.com/openapi';
     private string $tokenFilePath;
 
@@ -17,6 +19,8 @@ class Ali1688Service
     {
         $this->appKey = config('services.ali1688.app_key');
         $this->appSecret = config('services.ali1688.app_secret');
+        $this->buyerId = config('services.ali1688.buyer_id');
+        $this->accountType = config('services.ali1688.account_type', 'buyer');
         $this->tokenFilePath = storage_path('app/ali1688_tokens.json');
         $this->loadAccessToken();
     }
@@ -294,9 +298,27 @@ class Ali1688Service
         );
     }
 
-    public function preparePayment(int $orderId): array
+    /**
+     * alibaba.trade.pay.protocolPay.preparePay — şifrəsiz ödəniş (Alipay protokolu)
+     *
+     * QEYD: payChannel = 'alipay' düzgündür.
+     *       'kjpayV2' (跨境宝) AYRI müqavilə tələb edir.
+     *
+     * @param int      $orderId       1688 order ID
+     * @param int|null $payAmountFen  Ödəniləcək məbləğ fen-lə (CNY × 100). null isə 1688 özü hesablayır.
+     */
+    public function preparePayment(int $orderId, ?int $payAmountFen = null): array
     {
-        $param = ['orderId' => $orderId];
+        $param = [
+            'orderId'     => (int) $orderId,
+            'payChannel'  => 'alipay',
+            'opRequestId' => 'pz_' . $orderId . '_' . time(),
+            'buyerId'     => (int) $this->buyerId,
+            'accountType' => $this->accountType,
+        ];
+        if ($payAmountFen !== null) {
+            $param['payAmount'] = $payAmountFen;
+        }
 
         return $this->callApi(
             'com.alibaba.trade',
@@ -306,26 +328,67 @@ class Ali1688Service
         );
     }
 
+    /**
+     * alibaba.trade.createRefund — refund yarat
+     *
+     * goodsStatus enum:
+     *   refundWaitSellerSend       — satıcı hələ göndərməyib
+     *   refundWaitBuyerReceive     — alıcı qəbul gözləyir
+     *   refundBuyerReceived        — alıcı qəbul edib
+     *   aftersaleBuyerNotReceived  — satışdan sonra, alıcı qəbul etməyib
+     *   aftersaleBuyerReceived     — satışdan sonra, alıcı qəbul edib
+     *
+     * @param int    $orderId           1688 order ID
+     * @param int[]  $orderEntryIds     subItemID-lər (productItems[].subItemID)
+     * @param int    $applyPaymentFen   Geri qaytarılan məhsul məbləği fen-lə
+     * @param int    $applyCarriageFen  Geri qaytarılan çatdırılma məbləği fen-lə
+     * @param int    $applyReasonId     Refund səbəb ID-si (default 20006 = 不想买了)
+     * @param string $description       Refund açıqlaması
+     * @param string $goodsStatus       Mal statusu (yuxarıdakı enum)
+     */
     public function createRefund(
         int $orderId,
         array $orderEntryIds,
-        string $refundType = 'refund',
-        ?string $applyReason = null,
-        ?float $applyAmount = null
+        int $applyPaymentFen,
+        int $applyCarriageFen,
+        int $applyReasonId = 20006,
+        string $description = 'Refund request',
+        string $goodsStatus = 'refundWaitSellerSend'
     ): array {
-        $refundParam = [
-            'orderId' => $orderId,
-            'orderEntryIds' => $orderEntryIds,
-            'disputeRequest' => $refundType,
-        ];
-        if ($applyReason) $refundParam['applyReason'] = $applyReason;
-        if ($applyAmount) $refundParam['applyPayment'] = $applyAmount;
-
         return $this->callApi(
             'com.alibaba.trade',
             'alibaba.trade.createRefund',
             '1',
-            ['param' => json_encode($refundParam, JSON_UNESCAPED_UNICODE)]
+            [
+                'orderId'        => $orderId,
+                'orderEntryIds'  => json_encode($orderEntryIds),
+                'disputeRequest' => 'refund',
+                'applyPayment'   => $applyPaymentFen,
+                'applyCarriage'  => $applyCarriageFen,
+                'applyReasonId'  => $applyReasonId,
+                'description'    => $description,
+                'goodsStatus'    => $goodsStatus,
+            ]
+        );
+    }
+
+    /**
+     * alibaba.trade.getRefundReasonList — refund səbəblər siyahısı
+     */
+    public function getRefundReasonList(
+        int $orderId,
+        array $orderEntryIds,
+        string $goodsStatus = 'refundWaitSellerSend'
+    ): array {
+        return $this->callApi(
+            'com.alibaba.trade',
+            'alibaba.trade.getRefundReasonList',
+            '1',
+            [
+                'orderId'       => $orderId,
+                'orderEntryIds' => json_encode($orderEntryIds),
+                'goodsStatus'   => $goodsStatus,
+            ]
         );
     }
 

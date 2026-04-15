@@ -27,11 +27,15 @@ return [
     // Orders
     'insufficient_balance' => 'Balans kifayət etmir. Depozit artırın və ya admin ilə əlaqə saxlayın.',
     'order_charge' => ':id sifarişi üçün ödəniş',
+    'order_refund' => ':id sifarişi üzrə refund',
+    'product_count_sync_queued' => 'Məhsul sayı sinxronizasiyası başladıldı. Background-da işlənir.',
     'order_failed' => 'Sifariş yaradıla bilmədi',
     'order_error' => 'Sifariş xətası: :error',
     'payment_failed' => 'Ödəniş uğursuz oldu. Sifariş avtomatik ləğv edildi.',
     'payment_error_NO_SIGN_UP_ERROR' => '1688 hesabında Alipay bağlı deyil. Həll üçün admin ilə əlaqə saxlayın.',
     'payment_error_BALANCE_NOT_ENOUGH' => '1688 hesabında Alipay balansı kifayət etmir.',
+    'order_not_found' => 'Sifariş tapılmadı və ya məhsul siyahısı boşdur.',
+    'refund_default_reason' => 'Geri qaytarma müraciəti',
 
     // Plan
     'plan_archived' => 'Plan arxivləndi',
