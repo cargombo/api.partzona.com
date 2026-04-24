@@ -36,6 +36,7 @@ return [
     'payment_error_BALANCE_NOT_ENOUGH' => '1688 hesabında Alipay balansı kifayət etmir.',
     'order_not_found' => 'Sifariş tapılmadı və ya məhsul siyahısı boşdur.',
     'refund_default_reason' => 'Geri qaytarma müraciəti',
+    'cancel_not_allowed' => 'Sifariş artıq ödənildiyi üçün ləğv edilə bilməz. Refund endpoint-indən istifadə edin.',
 
     // Plan
     'plan_archived' => 'Plan arxivləndi',

@@ -37,6 +37,15 @@ return [
         'offer_pool_id' => env('ALI1688_OFFER_POOL_ID'),
         'buyer_id' => env('ALI1688_BUYER_ID'),
         'account_type' => env('ALI1688_ACCOUNT_TYPE', 'buyer'),
+        'warehouse' => [
+            'name' => env('ALI1688_WAREHOUSE_NAME'),
+            'phone' => env('ALI1688_WAREHOUSE_PHONE'),
+            'province' => env('ALI1688_WAREHOUSE_PROVINCE'),
+            'city' => env('ALI1688_WAREHOUSE_CITY'),
+            'district' => env('ALI1688_WAREHOUSE_DISTRICT'),
+            'address' => env('ALI1688_WAREHOUSE_ADDRESS'),
+            'post_code' => env('ALI1688_WAREHOUSE_POST_CODE'),
+        ],
     ],
 
 ];

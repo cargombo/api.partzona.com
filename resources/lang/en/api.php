@@ -36,6 +36,7 @@ return [
     'payment_error_BALANCE_NOT_ENOUGH' => 'Insufficient Alipay balance on 1688 account.',
     'order_not_found' => 'Order not found or product list is empty.',
     'refund_default_reason' => 'Refund request',
+    'cancel_not_allowed' => 'Order cannot be cancelled because it is already paid. Please use the refund endpoint instead.',
 
     // Plan
     'plan_archived' => 'Plan archived',

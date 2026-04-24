@@ -294,20 +294,8 @@ class PartnerApiController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"flow","address","items"},
+     *             required={"flow","items"},
      *             @OA\Property(property="flow", type="string", enum={"bigcfenxiao","bigcpifa"}, example="bigcpifa", description="bigcfenxiao=B2C, bigcpifa=B2B"),
-     *             @OA\Property(property="address", type="object",
-     *                 required={"fullName","mobile","provinceText","cityText","address"},
-     *                 @OA\Property(property="fullName", type="string", example="Test User"),
-     *                 @OA\Property(property="mobile", type="string", example="13800138000"),
-     *                 @OA\Property(property="phone", type="string", example="13800138000"),
-     *                 @OA\Property(property="postCode", type="string", example="string"),
-     *                 @OA\Property(property="provinceText", type="string", example="浙江省"),
-     *                 @OA\Property(property="cityText", type="string", example="杭州市"),
-     *                 @OA\Property(property="areaText", type="string", example="滨江区"),
-     *                 @OA\Property(property="address", type="string", example="网商路699号"),
-     *                 @OA\Property(property="districtText", type="string", example="string")
-     *             ),
      *             @OA\Property(property="items", type="array",
      *                 @OA\Items(
      *                     required={"offerId","quantity"},
@@ -341,12 +329,6 @@ class PartnerApiController extends Controller
     {
         $request->validate([
             'flow' => 'required|in:bigcfenxiao,bigcpifa',
-            'address' => 'required|array',
-            'address.fullName' => 'required|string',
-            'address.mobile' => 'required|string',
-            'address.provinceText' => 'required|string',
-            'address.cityText' => 'required|string',
-            'address.address' => 'required|string',
             'items' => 'required|array|min:1',
             'items.*.offerId' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
@@ -355,6 +337,8 @@ class PartnerApiController extends Controller
         ]);
 
         $partner = $request->input('_partner');
+
+        $address = $this->buildWarehouseAddress($partner);
 
         // Sandbox mode — mock cavab qaytar
         if ($request->input('_is_sandbox')) {
@@ -376,7 +360,7 @@ class PartnerApiController extends Controller
             $result = $this->ali1688->createOrder(
                 $request->input('flow'),
                 $outOrderId,
-                $request->input('address'),
+                $address,
                 $request->input('items'),
                 'y',
                 $request->input('message')
@@ -429,7 +413,7 @@ class PartnerApiController extends Controller
                 }
 
                 // Payment uğurlu → DB-yə yaz + balansdan düş
-                DB::transaction(function () use ($partner, $productCny, $shippingFeeCny, $amountUsd, $orderId, $outOrderId, $request) {
+                DB::transaction(function () use ($partner, $productCny, $shippingFeeCny, $amountUsd, $orderId, $outOrderId, $request, $address) {
                     Order::create([
                         'partner_id' => $partner->id,
                         'order_id' => $orderId,
@@ -439,7 +423,7 @@ class PartnerApiController extends Controller
                         'total_amount' => $productCny,
                         'post_fee' => $shippingFeeCny,
                         'flow' => $request->input('flow'),
-                        'address' => $request->input('address'),
+                        'address' => $address,
                         'message' => $request->input('message'),
                     ]);
 
@@ -620,7 +604,7 @@ class PartnerApiController extends Controller
      * @OA\Delete(
      *     path="/orders/{orderId}",
      *     summary="Sifarişi ləğv et",
-     *     description="Ödənilməmiş sifarişi ləğv edir.",
+     *     description="Yalnız ödənilməmiş (waitbuyerpay) sifarişlər ləğv edilə bilər. Ödənilmiş sifarişlər üçün /orders/{orderId}/refund istifadə edin.",
      *     operationId="cancelOrder",
      *     tags={"Orders"},
      *     security={{"bearerAuth":{}}},
@@ -628,7 +612,9 @@ class PartnerApiController extends Controller
      *     @OA\Parameter(name="orderId", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Parameter(name="reason", in="query", description="Ləğv səbəbi", @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Sifariş ləğv edildi"),
+     *     @OA\Response(response=400, description="Sifariş artıq ödənilib və ya ləğv edilə bilməz — refund istifadə edin"),
      *     @OA\Response(response=401, description="Token etibarsızdır"),
+     *     @OA\Response(response=404, description="Sifariş tapılmadı"),
      *     @OA\Response(response=429, description="Rate limit aşılıb")
      * )
      */
@@ -638,13 +624,35 @@ class PartnerApiController extends Controller
             return response()->json(['success' => true, 'sandbox' => true, 'message' => 'Order cancelled (sandbox)']);
         }
 
+        $partner = $request->input('_partner');
+
+        $order = Order::where('order_id', (string) $orderId)
+            ->where('partner_id', $partner->id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'status' => 404,
+                'message' => __('api.order_not_found'),
+            ], 404);
+        }
+
+        if ($order->status !== 'waitbuyerpay') {
+            return response()->json([
+                'status' => 400,
+                'message' => __('api.cancel_not_allowed'),
+                'current_status' => $order->status,
+                'hint' => 'POST /orders/' . $orderId . '/refund',
+            ], 400);
+        }
+
         $result = $this->ali1688->cancelOrder(
             $orderId,
             $request->input('reason')
         );
 
-        if (isset($result['success'])){
-            Order::where('order_id', (string) $orderId)->update(['status' => 'cancel']);
+        if (!empty($result['success'])) {
+            $order->update(['status' => 'cancel']);
         }
 
         return response()->json($result);
@@ -810,6 +818,27 @@ class PartnerApiController extends Controller
     /**
      * Sandbox mode üçün mock order yaradır
      */
+    /**
+     * 1688-ə göndəriləcək warehouse ünvanını env-dən qur.
+     * fullName həmişə partner-in şirkət adıdır.
+     */
+    private function buildWarehouseAddress($partner): array
+    {
+        $wh = config('services.ali1688.warehouse');
+
+        return [
+            'fullName' => $partner->company_name,
+            'mobile' => $wh['phone'] ?? '',
+            'phone' => $wh['phone'] ?? '',
+            'postCode' => $wh['post_code'] ?? '',
+            'provinceText' => $wh['province'] ?? '',
+            'cityText' => $wh['city'] ?? '',
+            'areaText' => $wh['district'] ?? '',
+            'address' => $wh['address'] ?? '',
+            'districtText' => '',
+        ];
+    }
+
     private function sandboxCreateOrder(Request $request): JsonResponse
     {
         $items = $request->input('items', []);

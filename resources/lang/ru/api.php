@@ -36,6 +36,7 @@ return [
     'payment_error_BALANCE_NOT_ENOUGH' => 'Недостаточно средств на Alipay аккаунте 1688.',
     'order_not_found' => 'Заказ не найден или список товаров пуст.',
     'refund_default_reason' => 'Запрос на возврат',
+    'cancel_not_allowed' => 'Заказ не может быть отменён, так как он уже оплачен. Используйте endpoint возврата (refund).',
 
     // Plan
     'plan_archived' => 'План архивирован',
