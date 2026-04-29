@@ -216,6 +216,137 @@ class Ali1688Service
     }
 
     /**
+     * Açar söz ilə məhsul axtarışı.
+     * keyword Çincə olmalıdır.
+     */
+    public function searchByKeyword(
+        string $chineseKeyword,
+        int $page = 1,
+        int $pageSize = 20,
+        array $options = []
+    ): array {
+        $offerQueryParam = [
+            'keyword' => $chineseKeyword,
+            'beginPage' => max(1, $page),
+            'pageSize' => min(50, max(1, $pageSize)),
+            'keywordTranslate' => $options['keywordTranslate'] ?? true,
+            'country' => $options['country'] ?? 'en',
+        ];
+
+        foreach (['priceStart', 'priceEnd', 'categoryId', 'categoryIdList', 'sort', 'filter', 'snId', 'outMemberId'] as $key) {
+            if (!empty($options[$key])) {
+                $offerQueryParam[$key] = $options[$key];
+            }
+        }
+
+        return $this->callApi(
+            'com.alibaba.fenxiao.crossborder',
+            'product.search.keywordQuery',
+            '1',
+            ['offerQueryParam' => json_encode($offerQueryParam, JSON_UNESCAPED_UNICODE)]
+        );
+    }
+
+    /**
+     * Şəkil ilə məhsul axtarışı (URL və ya base64).
+     * 1688 imageQuery yalnız imageId qəbul edir — əvvəlcə uploadImage ilə imageId alırıq.
+     */
+    public function searchByImage(
+        string $imageUrlOrBase64,
+        int $page = 1,
+        int $pageSize = 20,
+        array $options = []
+    ): array {
+        if (preg_match('~^https?://~i', $imageUrlOrBase64)) {
+            try {
+                $response = Http::timeout(30)
+                    ->withOptions(['verify' => false])
+                    ->withHeaders(['User-Agent' => 'Mozilla/5.0'])
+                    ->get($imageUrlOrBase64);
+
+                if (!$response->successful()) {
+                    return ['result' => ['success' => 'false', 'code' => 'image_fetch_failed', 'message' => "Unable to fetch image URL (HTTP {$response->status()})"]];
+                }
+                $bin = $response->body();
+                if ($bin === '' || $bin === null) {
+                    return ['result' => ['success' => 'false', 'code' => 'image_fetch_failed', 'message' => 'Image URL returned empty body']];
+                }
+            } catch (\Exception $e) {
+                Log::error('1688 image fetch error: ' . $e->getMessage());
+                return ['result' => ['success' => 'false', 'code' => 'image_fetch_failed', 'message' => 'Unable to fetch image URL: ' . $e->getMessage()]];
+            }
+            $b64 = base64_encode($bin);
+        } else {
+            $b64 = preg_replace('~^data:image/[a-zA-Z]+;base64,~', '', $imageUrlOrBase64);
+        }
+
+        $uploadResponse = $this->callApi(
+            'com.alibaba.fenxiao.crossborder',
+            'product.image.upload',
+            '1',
+            ['uploadImageParam' => json_encode(['imageBase64' => $b64], JSON_UNESCAPED_UNICODE)]
+        );
+        $imageId = $uploadResponse['result']['result'] ?? null;
+        if (!is_string($imageId) || $imageId === '') {
+            return [
+                'result' => [
+                    'success' => 'false',
+                    'code' => 'image_upload_failed',
+                    'message' => 'Image upload to 1688 failed',
+                    'upload_response' => $uploadResponse,
+                ],
+            ];
+        }
+
+        return $this->searchByImageId($imageId, $page, $pageSize, $options);
+    }
+
+    /**
+     * Əvvəlcədən alınmış imageId ilə axtarış (camera flow / pagination).
+     */
+    public function searchByImageId(
+        string $imageId,
+        int $page = 1,
+        int $pageSize = 20,
+        array $options = []
+    ): array {
+        $offerQueryParam = [
+            'imageId' => $imageId,
+            'beginPage' => max(1, $page),
+            'pageSize' => min(50, max(1, $pageSize)),
+            'country' => $options['country'] ?? 'en',
+        ];
+
+        foreach (['categoryId', 'priceStart', 'priceEnd', 'sort', 'filter'] as $key) {
+            if (!empty($options[$key])) {
+                $offerQueryParam[$key] = $options[$key];
+            }
+        }
+
+        return $this->callApi(
+            'com.alibaba.fenxiao.crossborder',
+            'product.search.imageQuery',
+            '1',
+            ['offerQueryParam' => json_encode($offerQueryParam, JSON_UNESCAPED_UNICODE)]
+        );
+    }
+
+    /**
+     * 1688 imageQuery üçün şəkil yükləmə — base64 → imageId.
+     */
+    public function uploadImage(string $imageBase64): ?string
+    {
+        $response = $this->callApi(
+            'com.alibaba.fenxiao.crossborder',
+            'product.image.upload',
+            '1',
+            ['uploadImageParam' => json_encode(['imageBase64' => $imageBase64], JSON_UNESCAPED_UNICODE)]
+        );
+        $imageId = $response['result']['result'] ?? null;
+        return is_string($imageId) && $imageId !== '' ? $imageId : null;
+    }
+
+    /**
      * Refresh token
      */
     // ==================== SİFARİŞ API-ləri ====================

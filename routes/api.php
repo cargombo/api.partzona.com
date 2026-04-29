@@ -115,7 +115,9 @@ Route::prefix('v1')->middleware('partner.api')->group(function () {
     Route::get('/categories/{categoryId}/products/total', [PartnerApiController::class, 'categoryProductTotal']);
 
     // Products
-    Route::get('/products/{offerId}', [PartnerApiController::class, 'productDetail']);
+    Route::get('/products/search', [PartnerApiController::class, 'searchProducts']);
+    Route::post('/products/search-by-image', [PartnerApiController::class, 'searchProductsByImage']);
+    Route::get('/products/{offerId}', [PartnerApiController::class, 'productDetail'])->whereNumber('offerId');
 
     // Orders
     Route::post('/orders', [PartnerApiController::class, 'createOrder']);

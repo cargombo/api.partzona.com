@@ -210,6 +210,153 @@ class PartnerApiController extends Controller
 
     /**
      * @OA\Get(
+     *     path="/products/search",
+     *     summary="Açar söz ilə məhsul axtarışı",
+     *     description="1688-də keyword (Çincə) ilə məhsul axtarır. keyword_translate=true (default) — 1688 özü qeyri-çinli sözləri tərcümə edir.",
+     *     operationId="searchProducts",
+     *     tags={"Products"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(ref="#/components/parameters/lang"),
+     *     @OA\Parameter(name="keyword", in="query", required=true, description="Axtarış sözü (Çincə tövsiyə olunur)", @OA\Schema(type="string", example="裤子")),
+     *     @OA\Parameter(name="page", in="query", description="Səhifə nömrəsi", @OA\Schema(type="integer", default=1)),
+     *     @OA\Parameter(name="per_page", in="query", description="Səhifədəki məhsul sayı (max 50)", @OA\Schema(type="integer", default=20, maximum=50)),
+     *     @OA\Parameter(name="country", in="query", description="Cavab dili (məs. en, ru, zh)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="price_start", in="query", description="Min qiymət (CNY)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="price_end", in="query", description="Max qiymət (CNY)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="category_id", in="query", description="Kateqoriya filtri", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="sort", in="query", description="Sıralama JSON (price asc/desc, sales asc/desc)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="filter", in="query", description="Filterlər (vergüllə)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="keyword_translate", in="query", description="1688 keyword-u tərcümə etsin", @OA\Schema(type="boolean", default=true)),
+     *     @OA\Response(response=200, description="Axtarış nəticəsi"),
+     *     @OA\Response(response=401, description="Token etibarsızdır"),
+     *     @OA\Response(response=422, description="Validasiya xətası"),
+     *     @OA\Response(response=429, description="Rate limit aşılıb")
+     * )
+     */
+    public function searchProducts(Request $request): JsonResponse
+    {
+
+        $request->validate([
+            'keyword' => 'required|string|min:1',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
+            'country' => 'nullable|string',
+            'price_start' => 'nullable|string',
+            'price_end' => 'nullable|string',
+            'category_id' => 'nullable|integer',
+            'sort' => 'nullable|string',
+            'filter' => 'nullable|string',
+            'keyword_translate' => 'nullable|in:0,1,true,false',
+        ]);
+
+        $options = array_filter([
+            'country' => $request->input('country'),
+            'priceStart' => $request->input('price_start'),
+            'priceEnd' => $request->input('price_end'),
+            'categoryId' => $request->input('category_id'),
+            'sort' => $request->input('sort'),
+            'filter' => $request->input('filter'),
+            'keywordTranslate' => $request->boolean('keyword_translate', true),
+        ], fn($v) => $v !== null && $v !== '');
+
+        $result = $this->ali1688->searchByKeyword(
+            $request->input('keyword'),
+            (int) $request->input('page', 1),
+            (int) $request->input('per_page', 20),
+            $options
+        );
+
+        return response()->json($result);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/products/search-by-image",
+     *     summary="Şəkil ilə məhsul axtarışı (Reverse Image Search)",
+     *     description="Şəkil URL və ya base64 göndərib oxşar məhsulları tapır. Pagination üçün cavabdakı imageId-ni saxlayıb image_id parametri ilə yenidən sorğu göndərin.",
+     *     operationId="searchProductsByImage",
+     *     tags={"Products"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(ref="#/components/parameters/lang"),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="image_url", type="string", nullable=true, description="Şəkil URL-i (https://...). image_url, image_base64, image_id-dən ən azı biri tələb olunur"),
+     *             @OA\Property(property="image_base64", type="string", nullable=true, description="Base64 string (data:image/...;base64, prefiksi olub-olmaması fərq etmir)"),
+     *             @OA\Property(property="image_id", type="string", nullable=true, description="Əvvəlki cavabdan gələn imageId — pagination üçün, yenidən yükləməni atlayır"),
+     *             @OA\Property(property="page", type="integer", default=1),
+     *             @OA\Property(property="per_page", type="integer", default=20, maximum=50),
+     *             @OA\Property(property="country", type="string", nullable=true, description="Cavab dili"),
+     *             @OA\Property(property="category_id", type="integer", nullable=true),
+     *             @OA\Property(property="price_start", type="string", nullable=true),
+     *             @OA\Property(property="price_end", type="string", nullable=true),
+     *             @OA\Property(property="sort", type="string", nullable=true),
+     *             @OA\Property(property="filter", type="string", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Oxşar məhsulların siyahısı"),
+     *     @OA\Response(response=400, description="Şəkil yüklənə bilmədi"),
+     *     @OA\Response(response=401, description="Token etibarsızdır"),
+     *     @OA\Response(response=422, description="Validasiya xətası"),
+     *     @OA\Response(response=429, description="Rate limit aşılıb")
+     * )
+     */
+    public function searchProductsByImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'image_url' => 'nullable|string|url',
+            'image_base64' => 'nullable|string',
+            'image_id' => 'nullable|string',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
+            'country' => 'nullable|string',
+            'category_id' => 'nullable|integer',
+            'price_start' => 'nullable|string',
+            'price_end' => 'nullable|string',
+            'sort' => 'nullable|string',
+            'filter' => 'nullable|string',
+        ]);
+
+        if (!$request->filled('image_url') && !$request->filled('image_base64') && !$request->filled('image_id')) {
+            return response()->json([
+                'status' => 422,
+                'message' => __('api.image_required'),
+            ], 422);
+        }
+
+        $options = array_filter([
+            'country' => $request->input('country'),
+            'categoryId' => $request->input('category_id'),
+            'priceStart' => $request->input('price_start'),
+            'priceEnd' => $request->input('price_end'),
+            'sort' => $request->input('sort'),
+            'filter' => $request->input('filter'),
+        ], fn($v) => $v !== null && $v !== '');
+
+        $page = (int) $request->input('page', 1);
+        $perPage = (int) $request->input('per_page', 20);
+
+        if ($request->filled('image_id')) {
+            $result = $this->ali1688->searchByImageId(
+                $request->input('image_id'),
+                $page,
+                $perPage,
+                $options
+            );
+        } else {
+            $result = $this->ali1688->searchByImage(
+                $request->input('image_url') ?: $request->input('image_base64'),
+                $page,
+                $perPage,
+                $options
+            );
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/categories",
      *     summary="İcazəli kateqoriyalar",
      *     description="Partnerin icazəli kateqoriyalarının siyahısını qaytarır.",

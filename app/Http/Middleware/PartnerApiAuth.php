@@ -13,6 +13,10 @@ class PartnerApiAuth
 {
     public function handle(Request $request, Closure $next)
     {
+        // Partner API həmişə JSON qaytarsın — Accept başlığı nə olursa olsun.
+        // (Validation səhvlərində browser-style redirect-lərin qarşısını alır.)
+        $request->headers->set('Accept', 'application/json');
+
         // Dil parametri: ?lang=az|ru|en (default: en)
         $lang = $request->input('lang', $request->header('Accept-Language', 'en'));
         if (in_array($lang, ['az', 'ru', 'en'])) {

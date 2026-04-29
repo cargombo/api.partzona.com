@@ -37,6 +37,7 @@ return [
     'order_not_found' => 'Order not found or product list is empty.',
     'refund_default_reason' => 'Refund request',
     'cancel_not_allowed' => 'Order cannot be cancelled because it is already paid. Please use the refund endpoint instead.',
+    'image_required' => 'Provide image_url, image_base64 or image_id.',
 
     // Plan
     'plan_archived' => 'Plan archived',

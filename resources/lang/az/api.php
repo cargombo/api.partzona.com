@@ -37,6 +37,7 @@ return [
     'order_not_found' => 'Sifariş tapılmadı və ya məhsul siyahısı boşdur.',
     'refund_default_reason' => 'Geri qaytarma müraciəti',
     'cancel_not_allowed' => 'Sifariş artıq ödənildiyi üçün ləğv edilə bilməz. Refund endpoint-indən istifadə edin.',
+    'image_required' => 'image_url, image_base64 və ya image_id sahələrindən ən azı biri tələb olunur.',
 
     // Plan
     'plan_archived' => 'Plan arxivləndi',

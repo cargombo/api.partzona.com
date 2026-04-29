@@ -37,6 +37,7 @@ return [
     'order_not_found' => 'Заказ не найден или список товаров пуст.',
     'refund_default_reason' => 'Запрос на возврат',
     'cancel_not_allowed' => 'Заказ не может быть отменён, так как он уже оплачен. Используйте endpoint возврата (refund).',
+    'image_required' => 'Укажите image_url, image_base64 или image_id.',
 
     // Plan
     'plan_archived' => 'План архивирован',
